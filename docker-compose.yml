@@ -1,0 +1,137 @@
+# =============================================================================
+# docker-compose.yml — Distributed File Storage System
+#
+# Services:
+#   mongo    — MongoDB 7 instance for metadata persistence
+#   node1    — Storage node 1 (port 4001)
+#   node2    — Storage node 2 (port 4002)
+#   node3    — Storage node 3 (port 4003)
+#   backend  — Express.js backend (port 5000)
+#   frontend — React dev server (port 3000)  [commented out — use npm start locally]
+# =============================================================================
+
+version: '3.9'
+
+services:
+  # ── MongoDB ────────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: dfs-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - dfs-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Storage Node 1 ─────────────────────────────────────────────────────────
+  node1:
+    build:
+      context: ./storage-node
+      dockerfile: Dockerfile
+    container_name: dfs-node1
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    environment:
+      - PORT=4001
+      - NODE_ID=node1
+    volumes:
+      - node1-data:/app/data
+    networks:
+      - dfs-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Storage Node 2 ─────────────────────────────────────────────────────────
+  node2:
+    build:
+      context: ./storage-node
+      dockerfile: Dockerfile
+    container_name: dfs-node2
+    restart: unless-stopped
+    ports:
+      - "4002:4001"
+    environment:
+      - PORT=4001
+      - NODE_ID=node2
+    volumes:
+      - node2-data:/app/data
+    networks:
+      - dfs-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Storage Node 3 ─────────────────────────────────────────────────────────
+  node3:
+    build:
+      context: ./storage-node
+      dockerfile: Dockerfile
+    container_name: dfs-node3
+    restart: unless-stopped
+    ports:
+      - "4003:4001"
+    environment:
+      - PORT=4001
+      - NODE_ID=node3
+    volumes:
+      - node3-data:/app/data
+    networks:
+      - dfs-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Backend ────────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dfs-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongo:27017/dfs_db
+      - STORAGE_NODES=http://node1:4001,http://node2:4001,http://node3:4001
+      - VIRTUAL_NODES=150
+      - CHUNK_SIZE_BYTES=1048576
+    depends_on:
+      mongo:
+        condition: service_healthy
+      node1:
+        condition: service_healthy
+      node2:
+        condition: service_healthy
+      node3:
+        condition: service_healthy
+    networks:
+      - dfs-net
+
+# ── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  mongo-data:
+  node1-data:
+  node2-data:
+  node3-data:
+
+# ── Network ───────────────────────────────────────────────────────────────────
+networks:
+  dfs-net:
+    driver: bridge

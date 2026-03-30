@@ -1,0 +1,30 @@
+{
+  "name": "distributed-file-storage-system",
+  "version": "1.0.0",
+  "description": "A MERN-stack distributed file storage system with B-Tree, Consistent Hashing, and Merkle Tree",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm start",
+    "docker:up": "docker-compose up --build",
+    "docker:down": "docker-compose down -v",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "keywords": [
+    "distributed-systems",
+    "b-tree",
+    "consistent-hashing",
+    "merkle-tree",
+    "mern"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "framer-motion": "^12.38.0",
+    "recharts": "^3.8.0"
+  }
+}
